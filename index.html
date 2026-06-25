@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GAP Significance Calculator</title>
+<style>
+  :root{
+    --pew:#d6604d; --pew-dark:#b5462f; --blue:#3288bd; --ink:#2b2b2b;
+    --grey:#6b6b6b; --line:#e2e2e2; --bg:#f7f7f5; --green:#2e7d32; --red:#c62828;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI","Public Sans",system-ui,Arial,sans-serif;
+       color:var(--ink);background:var(--bg);line-height:1.45}
+  header{background:#fff;border-bottom:3px solid var(--pew);padding:18px 28px}
+  header h1{margin:0;font-size:1.35rem}
+  header p{margin:4px 0 0;color:var(--grey);font-size:.9rem}
+  .wrap{max-width:1020px;margin:0 auto;padding:0 28px 60px}
+  nav{display:flex;flex-wrap:wrap;gap:4px;margin:22px 0 0}
+  nav button{border:1px solid var(--line);background:#fff;padding:10px 16px;cursor:pointer;
+       font-size:.92rem;border-bottom:none;border-radius:6px 6px 0 0;color:var(--grey)}
+  nav button.active{background:var(--pew);color:#fff;border-color:var(--pew);font-weight:600}
+  .panel{background:#fff;border:1px solid var(--line);border-radius:0 8px 8px 8px;padding:24px}
+  .panel.hidden{display:none}
+  .desc{color:var(--grey);font-size:.9rem;margin:0 0 18px;border-left:3px solid var(--pew);
+        padding:6px 0 6px 12px;background:#fcf3f1}
+  .samples{display:grid;gap:18px}
+  .sample{border:1px solid var(--line);border-radius:8px;padding:14px 16px;background:#fcfcfc}
+  .sample h3{margin:0 0 10px;font-size:.95rem;color:var(--pew-dark)}
+  .row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+  .fld{display:flex;flex-direction:column;gap:3px}
+  .fld label{font-size:.74rem;text-transform:uppercase;letter-spacing:.04em;color:var(--grey)}
+  .fld input,.fld select{padding:7px 9px;border:1px solid #cfcfcf;border-radius:5px;font-size:.95rem;background:#fff}
+  .fld input[type=number]{width:92px}
+  .fld select{min-width:150px}
+  .fld .wide{min-width:190px}
+  .hint{font-size:.72rem;color:#999}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:720px){.grid2{grid-template-columns:1fr}}
+  .result{margin-top:22px;border-radius:8px;padding:18px 20px;border:1px solid var(--line)}
+  .verdict{font-size:1.15rem;font-weight:700;margin:0 0 6px}
+  .sig{color:var(--green)} .nsig{color:var(--red)}
+  table.out{width:100%;border-collapse:collapse;margin-top:14px;font-size:.9rem}
+  table.out th,table.out td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--line)}
+  table.out th{color:var(--grey);font-weight:600;font-size:.78rem;text-transform:uppercase}
+  .pill{display:inline-block;padding:2px 9px;border-radius:11px;font-size:.78rem;font-weight:600}
+  .pill.y{background:#e6f4ea;color:var(--green)} .pill.n{background:#fdecea;color:var(--red)}
+  .big{font-size:1.5rem;font-weight:700}
+  .muted{color:var(--grey);font-size:.82rem}
+  .ess{font-size:.78rem;color:#888;margin-top:3px}
+  details{margin-top:26px;font-size:.85rem;color:var(--grey)}
+  details summary{cursor:pointer;font-weight:600;color:var(--pew-dark)}
+  details code{background:#f0f0ee;padding:1px 5px;border-radius:4px}
+  .warn{background:#fff7e6;border:1px solid #f0d9a8;border-radius:6px;padding:9px 12px;
+        font-size:.8rem;color:#8a6d3b;margin-top:14px}
+  footer{color:#aaa;font-size:.75rem;text-align:center;margin-top:30px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Global Attitudes — Statistical Significance Calculator</h1>
+  <p>Tests differences in survey percentages, incorporating country-level design effects (deff). Enter percentages; sample sizes and design effects are filled in automatically and can be edited.</p>
+</header>
+
+<div class="wrap">
+  <nav id="tabs">
+    <button data-tab="t3" class="active">Over time / across countries</button>
+    <button data-tab="t2">Within one survey</button>
+    <button data-tab="t1">Margin of error</button>
+    <button data-tab="dd">Difference of differences</button>
+  </nav>
+
+  <!-- ============ TEST 3 ============ -->
+  <section id="t3" class="panel">
+    <p class="desc"><b>Use this for the most common questions:</b> is a country's value significantly different from another country, or from a previous year? Compares two independent samples using effective sample size (ESS = N ÷ deff).</p>
+    <div class="grid2">
+      <div class="sample" data-picker="a3"><h3>Sample 1</h3></div>
+      <div class="sample" data-picker="b3"><h3>Sample 2</h3></div>
+    </div>
+    <div id="t3result"></div>
+  </section>
+
+  <!-- ============ TEST 2 ============ -->
+  <section id="t2" class="panel hidden">
+    <p class="desc"><b>Use within a single survey</b> to compare two response options answered by the same respondents (e.g. 48% favorable vs 42% unfavorable in one country/year). Uses √deff and one sample size.</p>
+    <div class="sample" data-picker="a2" data-onesample="1"><h3>Survey (country &amp; year)</h3></div>
+    <div class="row" style="margin-top:14px">
+      <div class="fld"><label>Larger %</label><input type="number" id="t2p1" value="48" min="0" max="100" step="0.1"></div>
+      <div class="fld"><label>Smaller %</label><input type="number" id="t2p2" value="42" min="0" max="100" step="0.1"></div>
+    </div>
+    <div id="t2result"></div>
+  </section>
+
+  <!-- ============ TEST 1 ============ -->
+  <section id="t1" class="panel hidden">
+    <p class="desc"><b>Margin of error around a single percentage</b> for one country/year, given its design effect.</p>
+    <div class="sample" data-picker="a1" data-onesample="1"><h3>Survey (country &amp; year)</h3></div>
+    <div class="row" style="margin-top:14px">
+      <div class="fld"><label>Percentage</label><input type="number" id="t1p" value="50" min="0" max="100" step="0.1"></div>
+    </div>
+    <div id="t1result"></div>
+  </section>
+
+  <!-- ============ DIFF OF DIFF ============ -->
+  <section id="dd" class="panel hidden">
+    <p class="desc"><b>Difference of differences.</b> Tests whether a <i>gap</i> changed: e.g. did the gap between two countries (or two groups) widen/narrow from one year to another? Enter four percentages. Significant if the change in the gap exceeds the threshold.</p>
+    <div class="grid2">
+      <div class="sample" data-picker="ddA1"><h3>Condition A — item 1</h3></div>
+      <div class="sample" data-picker="ddA2"><h3>Condition A — item 2</h3></div>
+      <div class="sample" data-picker="ddB1"><h3>Condition B — item 1</h3></div>
+      <div class="sample" data-picker="ddB2"><h3>Condition B — item 2</h3></div>
+    </div>
+    <p class="muted" style="margin-top:10px">Gap A = (A item 2) − (A item 1). Gap B = (B item 2) − (B item 1). The test compares Gap A vs Gap B. <br>
+    Example (gap between countries over time): A = older year, B = newer year; item 1 = Country X, item 2 = Country Y.</p>
+    <div id="ddresult"></div>
+  </section>
+
+  <details>
+    <summary>Formulas &amp; methodology</summary>
+    <p><b>Design effect</b> enters as the effective sample size <code>ESS = N / deff</code> (between-sample tests) or as <code>√deff</code> (within-sample tests). Confidence-level multipliers Z: 95% = 1.96, 90% = 1.645, 80% = 1.282.</p>
+    <ul>
+      <li><b>Margin of error (single %):</b> <code>√deff · Z · √(p(1−p)/N) · 100</code></li>
+      <li><b>Within one survey (two options):</b> threshold = <code>√deff · Z · √(((p₁+p₂) − (p₁−p₂)²)/(N−1)) · 100</code></li>
+      <li><b>Between samples (over time / across countries):</b> threshold = <code>Z · √(p₁(1−p₁)/ESS₁ + p₂(1−p₂)/ESS₂) · 100</code></li>
+      <li><b>Difference of differences:</b> per condition VarDiff = (√(p₁(1−p₁)/ESS₁ + p₂(1−p₂)/ESS₂)·100)²; StdErr = √(VarDiff_A + VarDiff_B); threshold = Z · StdErr; compared against |GapA − GapB|.</li>
+    </ul>
+    <p>A difference is significant at a given confidence level when it exceeds that level's threshold. Matches the Global Error Calculator and the trend error workbooks.</p>
+    <div class="warn">⚠ Trend caution: there was a survey <b>mode change between Fall 2020 and Spring 2021</b>; comparisons across that boundary (and U.S. phone trends before Spring 2021) should be interpreted carefully.</div>
+  </details>
+
+  <footer id="srcnote"></footer>
+</div>
+
+<script>
+/*DATA_START*/
+window.GAP_DEFFN = {"source":"Trend Ns and deffs 2026 CHECKED.xlsx","generated":"2026-06-25 09:35","waves":["Spring, 2026","Spring, 2025","Feb, 2024","Spring, 2024","Spring, 2023","Spring, 2022","March, 2021","Spring, 2021","Fall, 2020","Summer, 2020","June, 2020","March, 2020","Spring, 2020","October, 2019","Spring, 2019","Spring, 2018","Fall, 2017","Spring, 2017","Spring, 2016","Spring, 2015"],"countries":[{"code":1,"name":"U.S.","data":{"Spring, 2026":{"deff":1.37,"n":3507},"Spring, 2025":{"deff":1.32,"n":3605},"Spring, 2024":{"deff":1.65,"n":3600},"Spring, 2023":{"deff":1.55,"n":3576},"Spring, 2022":{"deff":1.91,"n":3581},"Spring, 2021":{"deff":1.94,"n":2596},"Fall, 2020":{"deff":1.41,"n":1003},"Summer, 2020":{"deff":1.42,"n":1003},"March, 2020":{"deff":2.43,"n":8914},"October, 2019":{"deff":1.38,"n":1502},"Spring, 2019":{"deff":1.37,"n":1503},"Spring, 2018":{"deff":1.36,"n":1500},"Spring, 2017":{"deff":1.45,"n":1505},"Spring, 2016":{"deff":1.21,"n":1003},"Spring, 2015":{"deff":1.35,"n":1003}}},{"code":2,"name":"Canada","data":{"Spring, 2026":{"deff":1.33,"n":1020},"Spring, 2025":{"deff":1.36,"n":1024},"Spring, 2024":{"deff":1.41,"n":1163},"Spring, 2023":{"deff":1.38,"n":1007},"Spring, 2022":{"deff":1.48,"n":1324},"Spring, 2021":{"deff":1.51,"n":1011},"Summer, 2020":{"deff":1.47,"n":1037},"October, 2019":{"deff":1.39,"n":1560},"Spring, 2019":{"deff":1.66,"n":1004},"Spring, 2018":{"deff":1.55,"n":1056},"Spring, 2017":{"deff":1.35,"n":1022},"Spring, 2016":{"deff":1.63,"n":1020},"Spring, 2015":{"deff":1.37,"n":1004}}},{"code":3,"name":"France","data":{"Spring, 2026":{"deff":1.65,"n":1006},"Spring, 2025":{"deff":1.65,"n":1006},"Spring, 2024":{"deff":1.95,"n":1018},"Spring, 2023":{"deff":1.87,"n":1060},"Spring, 2022":{"deff":1.6,"n":1328},"Spring, 2021":{"deff":1.74,"n":985},"Fall, 2020":{"deff":1.6,"n":1021},"Summer, 2020":{"deff":1.66,"n":1051},"October, 2019":{"deff":1.5,"n":1502},"Spring, 2019":{"deff":1.82,"n":1027},"Spring, 2018":{"deff":1.88,"n":1003},"Fall, 2017":{"deff":1.5,"n":2011},"Spring, 2017":{"deff":1.93,"n":1000},"Spring, 2016":{"deff":1.9,"n":999},"Spring, 2015":{"deff":1.21,"n":1001}}},{"code":4,"name":"Germany","data":{"Spring, 2026":{"deff":1.4,"n":1004},"Spring, 2025":{"deff":1.33,"n":1006},"Spring, 2024":{"deff":2.13,"n":1008},"Spring, 2023":{"deff":1.86,"n":1021},"Spring, 2022":{"deff":1.87,"n":1318},"Spring, 2021":{"deff":1.88,"n":1027},"Fall, 2020":{"deff":1.96,"n":1042},"Summer, 2020":{"deff":1.74,"n":1016},"October, 2019":{"deff":1.6,"n":1535},"Spring, 2019":{"deff":1.7,"n":2015},"Spring, 2018":{"deff":2.08,"n":1001},"Fall, 2017":{"deff":1.63,"n":1983},"Spring, 2017":{"deff":1.59,"n":1002},"Spring, 2016":{"deff":1.71,"n":1000},"Spring, 2015":{"deff":1.67,"n":1000}}},{"code":5,"name":"Greece","data":{"Spring, 2026":{"deff":1.85,"n":1005},"Spring, 2025":{"deff":1.93,"n":1010},"Spring, 2024":{"deff":2.08,"n":1015},"Spring, 2023":{"deff":2,"n":1002},"Spring, 2022":{"deff":1.78,"n":1002},"Spring, 2021":{"deff":1.8,"n":1032},"Spring, 2019":{"deff":2.12,"n":1040},"Spring, 2018":{"deff":2.54,"n":1050},"Spring, 2017":{"deff":2.26,"n":852},"Spring, 2016":{"deff":2.35,"n":1007}}},{"code":6,"name":"Hungary","data":{"Spring, 2026":{"deff":1.6,"n":1010},"Spring, 2025":{"deff":1.48,"n":1020},"Feb, 2024":{"deff":1.43,"n":1006},"Spring, 2024":{"deff":2.07,"n":996},"Spring, 2023":{"deff":2.24,"n":1007},"Spring, 2022":{"deff":2.19,"n":1041},"Spring, 2019":{"deff":2.1,"n":1030},"Spring, 2018":{"deff":2.23,"n":1002},"Spring, 2017":{"deff":2.13,"n":944},"Spring, 2016":{"deff":2.14,"n":1005}}},{"code":7,"name":"Italy","data":{"Spring, 2026":{"deff":1.77,"n":1011},"Spring, 2025":{"deff":2.18,"n":1007},"Spring, 2024":{"deff":2.1,"n":1120},"Spring, 2023":{"deff":2.08,"n":1012},"Spring, 2022":{"deff":1.94,"n":1306},"Spring, 2021":{"deff":1.98,"n":1003},"Summer, 2020":{"deff":1.78,"n":1002},"October, 2019":{"deff":1.59,"n":1495},"Spring, 2019":{"deff":2.14,"n":1028},"Spring, 2018":{"deff":2.52,"n":1043},"Fall, 2017":{"deff":1.77,"n":2043},"Spring, 2017":{"deff":2.33,"n":905},"Spring, 2016":{"deff":2.25,"n":1016},"Spring, 2015":{"deff":1.73,"n":1000}}},{"code":8,"name":"Netherlands","data":{"Spring, 2026":{"deff":1.58,"n":1003},"Spring, 2025":{"deff":1.58,"n":1000},"Spring, 2024":{"deff":1.61,"n":1010},"Spring, 2023":{"deff":1.64,"n":1013},"Spring, 2022":{"deff":1.67,"n":1011},"Spring, 2021":{"deff":1.49,"n":1005},"Summer, 2020":{"deff":1.43,"n":1000},"October, 2019":{"deff":1.5,"n":1523},"Spring, 2019":{"deff":1.46,"n":1000},"Spring, 2018":{"deff":1.24,"n":1006},"Fall, 2017":{"deff":1.41,"n":2001},"Spring, 2017":{"deff":1.5,"n":1006},"Spring, 2016":{"deff":1.75,"n":999}}},{"code":9,"name":"Poland","data":{"Spring, 2026":{"deff":1.66,"n":1000},"Spring, 2025":{"deff":1.55,"n":1002},"Feb, 2024":{"deff":1.4,"n":1005},"Spring, 2024":{"deff":1.98,"n":1031},"Spring, 2023":{"deff":2.24,"n":1022},"Spring, 2022":{"deff":2.09,"n":1043},"October, 2019":{"deff":2.3,"n":1508},"Spring, 2019":{"deff":2.08,"n":1030},"Spring, 2018":{"deff":2.36,"n":1008},"Spring, 2017":{"deff":2.37,"n":1160},"Spring, 2016":{"deff":2.22,"n":1003},"Spring, 2015":{"deff":1.28,"n":1028}}},{"code":10,"name":"Spain","data":{"Spring, 2026":{"deff":2.02,"n":1015},"Spring, 2025":{"deff":1.8,"n":1001},"Spring, 2024":{"deff":1.91,"n":1013},"Spring, 2023":{"deff":1.99,"n":1012},"Spring, 2022":{"deff":1.79,"n":1024},"Spring, 2021":{"deff":1.77,"n":1000},"Summer, 2020":{"deff":1.82,"n":1041},"October, 2019":{"deff":1.68,"n":1513},"Spring, 2019":{"deff":1.83,"n":1069},"Spring, 2018":{"deff":1.34,"n":1005},"Fall, 2017":{"deff":1.7,"n":2011},"Spring, 2017":{"deff":1.71,"n":1000},"Spring, 2016":{"deff":1.76,"n":1002},"Spring, 2015":{"deff":1.29,"n":1000}}},{"code":11,"name":"Sweden","data":{"Spring, 2026":{"deff":1.42,"n":1008},"Spring, 2025":{"deff":1.5,"n":1001},"Spring, 2024":{"deff":1.66,"n":1017},"Spring, 2023":{"deff":1.8,"n":1096},"Spring, 2022":{"deff":1.77,"n":1029},"Spring, 2021":{"deff":1.83,"n":1029},"Summer, 2020":{"deff":1.72,"n":1016},"October, 2019":{"deff":1.65,"n":1582},"Spring, 2019":{"deff":1.63,"n":1016},"Spring, 2018":{"deff":1.65,"n":989},"Fall, 2017":{"deff":1.59,"n":1968},"Spring, 2017":{"deff":1.56,"n":1000},"Spring, 2016":{"deff":1.94,"n":1000}}},{"code":12,"name":"UK","data":{"Spring, 2026":{"deff":1.95,"n":1006},"Spring, 2025":{"deff":1.78,"n":1006},"Spring, 2024":{"deff":1.75,"n":1017},"Spring, 2023":{"deff":1.88,"n":1024},"Spring, 2022":{"deff":1.75,"n":1313},"Spring, 2021":{"deff":1.92,"n":1012},"Fall, 2020":{"deff":1.75,"n":1003},"Summer, 2020":{"deff":1.76,"n":1003},"October, 2019":{"deff":1.47,"n":1508},"Spring, 2019":{"deff":1.75,"n":1031},"Spring, 2018":{"deff":1.28,"n":1005},"Fall, 2017":{"deff":1.61,"n":2001},"Spring, 2017":{"deff":1.51,"n":1066},"Spring, 2016":{"deff":1.67,"n":1460},"Spring, 2015":{"deff":1.46,"n":999}}},{"code":13,"name":"Australia","data":{"Spring, 2026":{"deff":1.15,"n":2064},"Spring, 2025":{"deff":1.21,"n":1829},"Spring, 2024":{"deff":1.25,"n":2021},"Spring, 2023":{"deff":1.53,"n":2034},"Spring, 2022":{"deff":1.66,"n":2034},"March, 2021":{"deff":1.82,"n":1127},"Spring, 2021":{"deff":1.5,"n":1000},"Summer, 2020":{"deff":1.54,"n":1016},"June, 2020":{"deff":1.73,"n":1030},"October, 2019":{"deff":1.44,"n":1563},"Spring, 2019":{"deff":1.52,"n":1012},"Spring, 2018":{"deff":1.41,"n":1149},"Spring, 2017":{"deff":1.56,"n":1000},"Spring, 2016":{"deff":1.71,"n":1000},"Spring, 2015":{"deff":1.35,"n":1004}}},{"code":14,"name":"Bangladesh","data":{"Spring, 2026":{"deff":1.73,"n":1044},"Spring, 2024":{"deff":2.17,"n":1046}}},{"code":15,"name":"India","data":{"Spring, 2026":{"deff":3.96,"n":3566},"Spring, 2025":{"deff":3.2,"n":3545},"Spring, 2024":{"deff":3.06,"n":3559},"Spring, 2023":{"deff":2.12,"n":2611},"October, 2019":{"deff":2.19,"n":3175},"Spring, 2019":{"deff":2.05,"n":2476},"Spring, 2018":{"deff":2.03,"n":2521},"Spring, 2017":{"deff":3.49,"n":2464},"Spring, 2016":{"deff":2.61,"n":2464},"Spring, 2015":{"deff":2.69,"n":2452}}},{"code":16,"name":"Indonesia","data":{"Spring, 2026":{"deff":2.09,"n":1022},"Spring, 2025":{"deff":2.23,"n":1022},"Spring, 2024":{"deff":2.73,"n":937},"Spring, 2023":{"deff":2.27,"n":959},"Spring, 2019":{"deff":2.28,"n":1212},"Spring, 2018":{"deff":2.28,"n":1098},"Spring, 2017":{"deff":2.29,"n":1000},"Spring, 2015":{"deff":1.69,"n":1000}}},{"code":17,"name":"Japan","data":{"Spring, 2026":{"deff":1.63,"n":1010},"Spring, 2025":{"deff":1.47,"n":1006},"Spring, 2024":{"deff":1.4,"n":1003},"Spring, 2023":{"deff":1.53,"n":1004},"Spring, 2022":{"deff":1.4,"n":1154},"Spring, 2021":{"deff":1.56,"n":1014},"Summer, 2020":{"deff":1.67,"n":1056},"October, 2019":{"deff":1.49,"n":1526},"Spring, 2019":{"deff":1.46,"n":1037},"Spring, 2018":{"deff":1.45,"n":1016},"Spring, 2017":{"deff":1.43,"n":1009},"Spring, 2016":{"deff":1.77,"n":1000},"Spring, 2015":{"deff":1.09,"n":1000}}},{"code":18,"name":"Malaysia","data":{"Spring, 2026":{"deff":1.93,"n":1000},"Spring, 2024":{"deff":2.11,"n":1005},"Spring, 2022":{"deff":1.7,"n":1003},"Spring, 2015":{"deff":1.51,"n":1000}}},{"code":19,"name":"Pakistan","data":{"Spring, 2026":{"deff":2.2,"n":1039},"Spring, 2015":{"deff":1.8,"n":1200}}},{"code":20,"name":"Philippines","data":{"Spring, 2026":{"deff":2.1,"n":1003},"Spring, 2024":{"deff":2.14,"n":1011},"Spring, 2019":{"deff":2.01,"n":1035},"Spring, 2018":{"deff":2.15,"n":1181},"Spring, 2017":{"deff":1.96,"n":1000},"Spring, 2015":{"deff":1.73,"n":1000}}},{"code":21,"name":"Singapore","data":{"Spring, 2026":{"deff":1.61,"n":1003},"Spring, 2024":{"deff":1.68,"n":1014},"Spring, 2022":{"deff":1.4,"n":1001},"Spring, 2021":{"deff":1.65,"n":1124}}},{"code":22,"name":"South Korea","data":{"Spring, 2026":{"deff":1.55,"n":1045},"Spring, 2025":{"deff":1.65,"n":1042},"Spring, 2024":{"deff":1.6,"n":1029},"Spring, 2023":{"deff":1.21,"n":1735},"Spring, 2022":{"deff":1.28,"n":1008},"Spring, 2021":{"deff":1.27,"n":1006},"Summer, 2020":{"deff":1.23,"n":1191},"October, 2019":{"deff":1.2,"n":1569},"Spring, 2019":{"deff":1.26,"n":1006},"Spring, 2018":{"deff":1.17,"n":1007},"Spring, 2017":{"deff":1.05,"n":1010},"Spring, 2015":{"deff":1.04,"n":1005}}},{"code":23,"name":"Sri Lanka","data":{"Spring, 2026":{"deff":2.45,"n":2513},"Spring, 2024":{"deff":2.19,"n":2519}}},{"code":24,"name":"Thailand","data":{"Spring, 2026":{"deff":2.25,"n":1006},"Spring, 2024":{"deff":2.41,"n":1000}}},{"code":25,"name":"Israel","data":{"Spring, 2026":{"deff":1.66,"n":1001},"Spring, 2025":{"deff":1.68,"n":998},"Spring, 2024":{"deff":1.67,"n":1001},"Spring, 2023":{"deff":1.85,"n":1001},"Spring, 2022":{"deff":1.82,"n":1000},"Spring, 2019":{"deff":1.81,"n":974},"Spring, 2018":{"deff":1.99,"n":1000},"Spring, 2017":{"deff":2.14,"n":1050},"Spring, 2015":{"deff":1.92,"n":1000}}},{"code":26,"name":"Turkey","data":{"Spring, 2026":{"deff":1.97,"n":1014},"Spring, 2025":{"deff":2.1,"n":1048},"Spring, 2024":{"deff":1.87,"n":1049},"Spring, 2019":{"deff":2.21,"n":1046},"Spring, 2017":{"deff":2.17,"n":1050},"Spring, 2015":{"deff":1.79,"n":947}}},{"code":27,"name":"WB/EJ","data":{"Spring, 2026":{"deff":1.87,"n":1038},"Spring, 2015":{"deff":1.91,"n":1000}}},{"code":28,"name":"Ghana","data":{"Spring, 2026":{"deff":2.57,"n":1003},"Spring, 2024":{"deff":2.57,"n":1035},"Spring, 2017":{"deff":2.15,"n":1129},"Spring, 2015":{"deff":1.48,"n":1000}}},{"code":29,"name":"Kenya","data":{"Spring, 2026":{"deff":2.5,"n":1020},"Spring, 2025":{"deff":2.44,"n":1049},"Spring, 2024":{"deff":2.51,"n":1049},"Spring, 2023":{"deff":3.13,"n":1036},"Spring, 2019":{"deff":2.44,"n":1019},"Spring, 2018":{"deff":2.8,"n":1039},"Spring, 2017":{"deff":2.52,"n":1117},"Spring, 2016":{"deff":2.53,"n":1124},"Spring, 2015":{"deff":1.66,"n":1015}}},{"code":30,"name":"Nigeria","data":{"Spring, 2026":{"deff":1.89,"n":1013},"Spring, 2025":{"deff":1.9,"n":1037},"Spring, 2024":{"deff":1.9,"n":1050},"Spring, 2023":{"deff":2.02,"n":1050},"Spring, 2019":{"deff":2.13,"n":995},"Spring, 2018":{"deff":1.99,"n":1013},"Spring, 2017":{"deff":1.7,"n":1110},"Spring, 2016":{"deff":1.61,"n":1094},"Spring, 2015":{"deff":1.61,"n":1047}}},{"code":31,"name":"South Africa","data":{"Spring, 2026":{"deff":2.05,"n":1527},"Spring, 2025":{"deff":1.89,"n":1570},"Spring, 2024":{"deff":1.8,"n":1524},"Spring, 2023":{"deff":2.03,"n":1502},"Spring, 2019":{"deff":1.86,"n":1484},"Spring, 2018":{"deff":1.71,"n":1487},"Spring, 2017":{"deff":1.86,"n":1295},"Spring, 2016":{"deff":2.41,"n":1112},"Spring, 2015":{"deff":1.3,"n":1000}}},{"code":32,"name":"Argentina","data":{"Spring, 2026":{"deff":1.73,"n":1014},"Spring, 2025":{"deff":1.73,"n":1001},"Spring, 2024":{"deff":1.68,"n":1017},"Spring, 2023":{"deff":1.9,"n":992},"Spring, 2019":{"deff":1.88,"n":1035},"Spring, 2018":{"deff":1.72,"n":1000},"Spring, 2017":{"deff":2.75,"n":1012},"Spring, 2015":{"deff":1.56,"n":1000}}},{"code":33,"name":"Brazil","data":{"Spring, 2026":{"deff":2.04,"n":1054},"Spring, 2025":{"deff":2.12,"n":1053},"Spring, 2024":{"deff":2.09,"n":1054},"Spring, 2023":{"deff":2.14,"n":1044},"October, 2019":{"deff":2.48,"n":1591},"Spring, 2019":{"deff":2.09,"n":1046},"Spring, 2018":{"deff":2.18,"n":1008},"Spring, 2017":{"deff":2.35,"n":1008},"Spring, 2015":{"deff":1.54,"n":1000}}},{"code":34,"name":"Chile","data":{"Spring, 2026":{"deff":2.14,"n":1011},"Spring, 2024":{"deff":2.17,"n":1020},"Spring, 2017":{"deff":2.74,"n":987},"Spring, 2015":{"deff":1.48,"n":1000}}},{"code":35,"name":"Colombia","data":{"Spring, 2026":{"deff":1.93,"n":1025},"Spring, 2024":{"deff":2.02,"n":1051},"Spring, 2017":{"deff":3.39,"n":1000}}},{"code":36,"name":"Mexico","data":{"Spring, 2026":{"deff":2.15,"n":1017},"Spring, 2025":{"deff":2.09,"n":1050},"Spring, 2024":{"deff":2.09,"n":1042},"Spring, 2023":{"deff":2.04,"n":1041},"Spring, 2019":{"deff":2.15,"n":1028},"Spring, 2018":{"deff":2,"n":915},"Spring, 2017":{"deff":2.02,"n":1000},"Spring, 2015":{"deff":1.76,"n":1000}}},{"code":37,"name":"Peru","data":{"Spring, 2026":{"deff":2.08,"n":1011},"Spring, 2024":{"deff":2.01,"n":1050},"Spring, 2017":{"deff":2.27,"n":1000},"Spring, 2015":{"deff":1.68,"n":1000}}}]};
+/*DATA_END*/
+</script>
+
+<script>
+(function(){
+  "use strict";
+  var DATA = window.GAP_DEFFN || {};
+  var COUNTRIES = (DATA.countries||[]).slice().sort(function(a,b){return a.name.localeCompare(b.name);});
+  var Z = {"95":1.96,"90":1.645,"80":1.282};
+
+  function byName(n){ for(var i=0;i<COUNTRIES.length;i++) if(COUNTRIES[i].name===n) return COUNTRIES[i]; return null; }
+  function el(tag,attrs,html){ var e=document.createElement(tag); if(attrs) for(var k in attrs) e.setAttribute(k,attrs[k]); if(html!=null) e.innerHTML=html; return e; }
+
+  // ---- sample picker: country + year -> auto-fill deff & N (editable) ----
+  // returns an object with .get() -> {deff,n,country,year} and registers onChange
+  function buildPicker(host, onChange){
+    var state={};
+    var cSel=el("select",{class:"wide"});
+    cSel.appendChild(el("option",{value:""},"— select country —"));
+    COUNTRIES.forEach(function(c){ cSel.appendChild(el("option",{value:c.name},c.name)); });
+    var ySel=el("select",{});
+    var deff=el("input",{type:"number",step:"0.01",min:"0"});
+    var n=el("input",{type:"number",step:"1",min:"1"});
+    var pct=el("input",{type:"number",step:"0.1",min:"0",max:"100",value:"50"});
+
+    function mkFld(lbl,inp){ var f=el("div",{class:"fld"}); f.appendChild(el("label",null,lbl)); f.appendChild(inp); return f; }
+    var row=el("div",{class:"row"});
+    row.appendChild(mkFld("Country",cSel));
+    row.appendChild(mkFld("Year / wave",ySel));
+    row.appendChild(mkFld("%",pct));
+    row.appendChild(mkFld("deff",deff));
+    row.appendChild(mkFld("N",n));
+    host.appendChild(row);
+    var ess=el("div",{class:"ess"}); host.appendChild(ess);
+
+    function fillYears(){
+      ySel.innerHTML="";
+      var c=byName(cSel.value);
+      if(!c){ ySel.appendChild(el("option",{value:""},"—")); return; }
+      // preserve master wave order
+      (DATA.waves||[]).forEach(function(w){
+        if(c.data[w]) ySel.appendChild(el("option",{value:w},w));
+      });
+      applyYear();
+    }
+    function applyYear(){
+      var c=byName(cSel.value); var w=ySel.value;
+      if(c && c.data[w]){ deff.value=c.data[w].deff; n.value=c.data[w].n; }
+      updEss();
+    }
+    function updEss(){
+      var d=parseFloat(deff.value), nn=parseFloat(n.value);
+      ess.textContent=(d>0&&nn>0)?("Effective N = "+(nn/d).toFixed(1)):"";
+    }
+    cSel.addEventListener("change",function(){fillYears();onChange&&onChange();});
+    ySel.addEventListener("change",function(){applyYear();onChange&&onChange();});
+    [deff,n,pct].forEach(function(i){i.addEventListener("input",function(){updEss();onChange&&onChange();});});
+    fillYears();
+
+    return {
+      get:function(){return {deff:parseFloat(deff.value),n:parseFloat(n.value),
+                             pct:parseFloat(pct.value),country:cSel.value,year:ySel.value};},
+      pctEl:pct
+    };
+  }
+
+  // ---- math (mirrors validated Excel formulas) ----
+  function moe(p,n,deff,z){ return Math.sqrt(deff)*z*Math.sqrt((p/100*(1-p/100))/n)*100; }
+  function within(p1,p2,n,deff,z){
+    var a=p1/100,b=p2/100;
+    return Math.sqrt(deff)*z*Math.sqrt(((a+b)-Math.pow(a-b,2))/(n-1))*100;
+  }
+  function between(p1,p2,ess1,ess2,z){
+    return z*Math.sqrt((p1/100*(1-p1/100))/ess1 + (p2/100*(1-p2/100))/ess2)*100;
+  }
+  function valid(){ for(var i=0;i<arguments.length;i++){var v=arguments[i]; if(isNaN(v)||v===null) return false;} return true; }
+
+  function levelsTable(diff, thr95, thr90, thr80){
+    var rows=[["95%",thr95],["90%",thr90],["80%",thr80]].map(function(r){
+      var sig=diff>r[1];
+      return "<tr><td>"+r[0]+"</td><td>"+r[1].toFixed(2)+" pts</td><td>"+
+        "<span class='pill "+(sig?"y":"n")+"'>"+(sig?"Significant":"Not significant")+"</span></td></tr>";
+    }).join("");
+    return "<table class='out'><tr><th>Confidence</th><th>Threshold (Δ must exceed)</th><th>Result</th></tr>"+rows+"</table>";
+  }
+
+  // ---- renderers ----
+  function renderT3(){
+    var a=pA3.get(), b=pB3.get(), out=document.getElementById("t3result");
+    if(!valid(a.deff,a.n,a.pct,b.deff,b.n,b.pct)){ out.innerHTML="<p class='muted'>Fill in both samples.</p>"; return; }
+    var e1=a.n/a.deff, e2=b.n/b.deff, diff=Math.abs(a.pct-b.pct);
+    var t95=between(a.pct,b.pct,e1,e2,1.96), t90=between(a.pct,b.pct,e1,e2,1.645), t80=between(a.pct,b.pct,e1,e2,1.282);
+    var sig=diff>t95;
+    var dir = a.pct===b.pct ? "no difference" : (a.pct>b.pct? "Sample 1 higher" : "Sample 2 higher");
+    var lab1=a.country?(a.country+" "+a.year):"Sample 1", lab2=b.country?(b.country+" "+b.year):"Sample 2";
+    out.innerHTML="<div class='result'><p class='verdict "+(sig?"sig":"nsig")+"'>"+
+      (sig?"✓ Significant at 95%":"✗ Not significant at 95%")+"</p>"+
+      "<div class='muted'>"+lab1+": <b>"+a.pct+"%</b> vs "+lab2+": <b>"+b.pct+"%</b> — difference <span class='big'>"+diff.toFixed(1)+"</span> pts ("+(sig?dir:"within margin")+")</div>"+
+      levelsTable(diff,t95,t90,t80)+"</div>";
+  }
+  function renderT2(){
+    var s=pA2.get(), out=document.getElementById("t2result");
+    var p1=parseFloat(document.getElementById("t2p1").value), p2=parseFloat(document.getElementById("t2p2").value);
+    if(!valid(s.deff,s.n,p1,p2)){ out.innerHTML="<p class='muted'>Fill in the survey and both percentages.</p>"; return; }
+    var diff=Math.abs(p1-p2);
+    var t95=within(p1,p2,s.n,s.deff,1.96), t90=within(p1,p2,s.n,s.deff,1.645), t80=within(p1,p2,s.n,s.deff,1.282);
+    var sig=diff>t95;
+    out.innerHTML="<div class='result'><p class='verdict "+(sig?"sig":"nsig")+"'>"+
+      (sig?"✓ Significant at 95%":"✗ Not significant at 95%")+"</p>"+
+      "<div class='muted'>"+(s.country?(s.country+" "+s.year+" — "):"")+"<b>"+p1+"%</b> vs <b>"+p2+"%</b> — difference <span class='big'>"+diff.toFixed(1)+"</span> pts</div>"+
+      levelsTable(diff,t95,t90,t80)+"</div>";
+  }
+  function renderT1(){
+    var s=pA1.get(), out=document.getElementById("t1result");
+    var p=parseFloat(document.getElementById("t1p").value);
+    if(!valid(s.deff,s.n,p)){ out.innerHTML="<p class='muted'>Fill in the survey and a percentage.</p>"; return; }
+    var m95=moe(p,s.n,s.deff,1.96), m90=moe(p,s.n,s.deff,1.645), m80=moe(p,s.n,s.deff,1.282);
+    out.innerHTML="<div class='result'><p class='verdict'>"+p+"% ± <span class='sig'>"+m95.toFixed(1)+"</span> pts <span class='muted'>(95%)</span></p>"+
+      "<div class='muted'>"+(s.country?(s.country+" "+s.year+" — "):"")+"Effective N = "+(s.n/s.deff).toFixed(1)+"</div>"+
+      "<table class='out'><tr><th>Confidence</th><th>Margin of error</th><th>Range</th></tr>"+
+      [["95%",m95],["90%",m90],["80%",m80]].map(function(r){
+        return "<tr><td>"+r[0]+"</td><td>± "+r[1].toFixed(2)+" pts</td><td>"+(p-r[1]).toFixed(1)+"% – "+(p+r[1]).toFixed(1)+"%</td></tr>";
+      }).join("")+"</table></div>";
+  }
+  function renderDD(){
+    var a1=pddA1.get(),a2=pddA2.get(),b1=pddB1.get(),b2=pddB2.get(), out=document.getElementById("ddresult");
+    if(!valid(a1.deff,a1.n,a1.pct,a2.deff,a2.n,a2.pct,b1.deff,b1.n,b1.pct,b2.deff,b2.n,b2.pct)){
+      out.innerHTML="<p class='muted'>Fill in all four items.</p>"; return; }
+    function varDiff(x,y){ var e1=x.n/x.deff,e2=y.n/y.deff;
+      return Math.pow(Math.sqrt((x.pct/100*(1-x.pct/100))/e1+(y.pct/100*(1-y.pct/100))/e2)*100,2); }
+    var gapA=a2.pct-a1.pct, gapB=b2.pct-b1.pct;
+    var net=Math.abs(gapA-gapB);
+    var se=Math.sqrt(varDiff(a1,a2)+varDiff(b1,b2));
+    var t95=se*1.96,t90=se*1.645,t80=se*1.282, sig=net>t95;
+    out.innerHTML="<div class='result'><p class='verdict "+(sig?"sig":"nsig")+"'>"+
+      (sig?"✓ Gap change is significant at 95%":"✗ Gap change not significant at 95%")+"</p>"+
+      "<div class='muted'>Gap A = <b>"+gapA.toFixed(1)+"</b> pts &nbsp;|&nbsp; Gap B = <b>"+gapB.toFixed(1)+"</b> pts &nbsp;|&nbsp; change in gap = <span class='big'>"+net.toFixed(1)+"</span> pts</div>"+
+      levelsTable(net,t95,t90,t80)+"</div>";
+  }
+
+  // ---- wire up pickers ----
+  function pick(sel,cb){ return buildPicker(document.querySelector('[data-picker="'+sel+'"]'),cb); }
+  var pA3=pick("a3",renderT3), pB3=pick("b3",renderT3);
+  var pA2=pick("a2",renderT2);
+  var pA1=pick("a1",renderT1);
+  var pddA1=pick("ddA1",renderDD),pddA2=pick("ddA2",renderDD),pddB1=pick("ddB1",renderDD),pddB2=pick("ddB2",renderDD);
+  document.getElementById("t2p1").addEventListener("input",renderT2);
+  document.getElementById("t2p2").addEventListener("input",renderT2);
+  document.getElementById("t1p").addEventListener("input",renderT1);
+
+  // ---- tabs ----
+  var tabs=document.querySelectorAll("#tabs button");
+  tabs.forEach(function(b){ b.addEventListener("click",function(){
+    tabs.forEach(function(x){x.classList.remove("active");});
+    b.classList.add("active");
+    ["t3","t2","t1","dd"].forEach(function(id){ document.getElementById(id).classList.add("hidden"); });
+    document.getElementById(b.dataset.tab).classList.remove("hidden");
+  });});
+
+  // initial render + source note
+  renderT3();renderT2();renderT1();renderDD();
+  document.getElementById("srcnote").textContent =
+    "Design effects & sample sizes from "+(DATA.source||"trend workbook")+
+    (DATA.generated?(" · generated "+DATA.generated):"")+" · "+COUNTRIES.length+" countries, "+(DATA.waves||[]).length+" waves.";
+})();
+</script>
+</body>
+</html>
