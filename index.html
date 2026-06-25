@@ -475,10 +475,11 @@ window.GAP_DEFFN = {"source":"Trend Ns and deffs 2026 CHECKED.xlsx","generated":
                  comp:(tlComp(qid,c.code,wA)||tlComp(qid,c.code,wB))});
     });
     if(!rows.length){ out.innerHTML="<p class='muted'>No country was surveyed on this question in <b>both</b> "+wA+" and "+wB+", so there's no over-time trend to show (this question may have covered different countries in different years). To see all countries for one year, set <b>Year B</b> to “— none (single year) —”.</p>"; return; }
-    // sort: significant changes first, then by size of the gap (largest |Δ| first)
+    // sort: by the difference (Year A − Year B) high → low; ties broken by the
+    // larger right-hand (Year B) value
     rows.sort(function(a,b){
-      if(a.sig!==b.sig) return a.sig ? -1 : 1;
-      return Math.abs(b.d)-Math.abs(a.d);
+      if(b.d!==a.d) return b.d-a.d;
+      return b.pB-a.pB;
     });
     var head="<tr><th>Country</th><th>"+wA+"</th><th>"+wB+"</th><th>Δ (A−B)</th><th>Needs &gt;</th><th>Change</th></tr>";
     var anyComp=false;
